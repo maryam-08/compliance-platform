@@ -22,9 +22,9 @@ const QUESTION_BANK: Question[] = [
 export default function Audit() {
   const navigate = useNavigate();
   const [relevantQuestions, setRelevantQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-
-  useEffect(() => {
+ // const [answers, setAnswers] = useState<Record<number, string>>({});
+const [answers, setAnswers] = useState<Record<number, { val: string, evidenceName?: string }>>({});
+  /*useEffect(() => {
     // Load company profile to filter questions
     const profile = JSON.parse(localStorage.getItem('companyProfile') || '{}');
     if (!profile.sector) {
@@ -42,19 +42,76 @@ export default function Audit() {
     // Load existing answers if they exist
     const savedAnswers = JSON.parse(localStorage.getItem('currentAudit') || '{}');
     setAnswers(savedAnswers);
-  }, [navigate]);
+  }, [navigate]);*/
 
-  const handleAnswerChange = (id: number, val: string) => {
-    const updated = { ...answers, [id]: val };
+// 2. Updated useEffect with a "Cleaner" to prevent crashes from old data
+useEffect(() => {
+  const profile = JSON.parse(localStorage.getItem('companyProfile') || '{}');
+  if (!profile.sector) {
+    navigate('/company-profile');
+    return;
+  }
+
+  const filtered = QUESTION_BANK.filter(q => 
+    q.targetSector.includes('ALL') || q.targetSector.includes(profile.sector)
+  );
+  setRelevantQuestions(filtered);
+
+  const rawSaved = localStorage.getItem('currentAudit');
+  if (rawSaved) {
+    const parsed = JSON.parse(rawSaved);
+    
+    // MIGRATION: If the first item is a string, the data is old. Clear it!
+    const firstKey = Object.keys(parsed)[0];
+    if (firstKey && typeof parsed[firstKey] === 'string') {
+      console.warn("Old data format detected. Resetting audit for new schema.");
+      localStorage.removeItem('currentAudit');
+      setAnswers({});
+    } else {
+      setAnswers(parsed);
+    }
+  }
+}, [navigate]);
+
+  // 2. Updated handler to manage file selection
+const handleFileUpload = (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    const updated = { 
+      ...answers, 
+      [id]: { ...answers[id], evidenceName: file.name } 
+    };
     setAnswers(updated);
     localStorage.setItem('currentAudit', JSON.stringify(updated));
-  };
+  }
+};
 
-  const calculateProgress = () => {
+const handleAnswerChange = (id: number, val: string) => {
+  const updated = { 
+    ...answers, 
+    [id]: { ...answers[id], val: val } 
+  };
+  setAnswers(updated);
+  localStorage.setItem('currentAudit', JSON.stringify(updated));
+};
+     //const handleAnswerChange = (id: number, val: string) => {
+   // const updated = { ...answers, [id]: val };
+   // setAnswers(updated);
+    //localStorage.setItem('currentAudit', JSON.stringify(updated));
+  //};
+
+ /* const calculateProgress = () => {
     if (relevantQuestions.length === 0) return 0;
     const answeredCount = relevantQuestions.filter(q => answers[q.id]).length;
     return Math.round((answeredCount / relevantQuestions.length) * 100);
-  };
+  };*/
+  // 1. Updated Progress Logic: Only counts if a choice (Yes/No/NA) is made
+const calculateProgress = () => {
+  if (relevantQuestions.length === 0) return 0;
+  // Check specifically for the .val property
+  const answeredCount = relevantQuestions.filter(q => answers[q.id]?.val).length;
+  return Math.round((answeredCount / relevantQuestions.length) * 100);
+};
 
   return (
     <div style={containerStyle}>
@@ -70,15 +127,38 @@ export default function Audit() {
         <p>Answering for Sector: <strong>{JSON.parse(localStorage.getItem('companyProfile') || '{}').sector}</strong></p>
 
         {relevantQuestions.map((q, index) => (
-          <div key={q.id} style={questionCard}>
-            <p><strong>{index + 1}. {q.text}</strong></p>
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <label><input type="radio" name={`q-${q.id}`} checked={answers[q.id] === 'YES'} onChange={() => handleAnswerChange(q.id, 'YES')} /> Yes</label>
-              <label><input type="radio" name={`q-${q.id}`} checked={answers[q.id] === 'NO'} onChange={() => handleAnswerChange(q.id, 'NO')} /> No</label>
-              <label><input type="radio" name={`q-${q.id}`} checked={answers[q.id] === 'NA'} onChange={() => handleAnswerChange(q.id, 'NA')} /> N/A</label>
-            </div>
-          </div>
-        ))}
+  <div key={q.id} style={questionCard}>
+    <p><strong>{index + 1}. {q.text}</strong></p>
+    
+    <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
+      {['YES', 'NO', 'NA'].map(option => (
+        <label key={option}>
+          <input 
+            type="radio" 
+            name={`q-${q.id}`} 
+            checked={answers[q.id]?.val === option} 
+            onChange={() => handleAnswerChange(q.id, option)} 
+          /> {option}
+        </label>
+      ))}
+    </div>
+
+    {/* Evidence Upload Section */}
+    <div style={evidenceBox}>
+      <label style={{ fontSize: '12px', cursor: 'pointer', color: '#007bff' }}>
+        📎 {answers[q.id]?.evidenceName ? 'Change Evidence' : 'Attach Evidence'}
+        <input 
+          type="file" 
+          hidden 
+          onChange={(e) => handleFileUpload(q.id, e)} 
+        />
+      </label>
+      {answers[q.id]?.evidenceName && (
+        <span style={fileNameStyle}>Selected: {answers[q.id].evidenceName}</span>
+      )}
+    </div>
+  </div>
+))}
 
         <button 
           style={submitBtn} 
@@ -101,3 +181,16 @@ const progressBarBg = { width: '100%', height: '10px', backgroundColor: '#eee', 
 const progressBarFill = { height: '100%', backgroundColor: '#28a745', transition: 'width 0.3s' };
 const backBtn = { marginTop: '20px', width: '100%', padding: '8px', cursor: 'pointer' };
 const submitBtn = { marginTop: '30px', padding: '15px 30px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' as const };
+const evidenceBox = { 
+  marginTop: '10px', 
+  padding: '10px', 
+  backgroundColor: '#f8f9fa', 
+  borderRadius: '4px', 
+  border: '1px dashed #ccc' 
+};
+const fileNameStyle = { 
+  marginLeft: '10px', 
+  fontSize: '12px', 
+  color: '#28a745', 
+  fontWeight: 'bold' 
+};
