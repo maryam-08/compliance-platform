@@ -45,7 +45,7 @@ export default function Register() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
+    <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '1rem', border: '1px solid #e4e4e4', borderRadius: '8px' }}>
       <h2>Register</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <form onSubmit={handleSubmit}>
@@ -68,5 +68,9 @@ const inputStyle = {
   width: '100%',
   padding: '8px',
   marginBottom: '10px',
-  boxSizing: 'border-box' as const
+  boxSizing: 'border-box' as const,
+  backgroundColor: '#ffffff', // Force white background
+  color: '#333333',           // Force dark gray text
+  border: '1px solid #cccccc', // Add a light gray border so you can see the box
+  borderRadius: '4px',        // Optional: makes it look a bit more modern
 };

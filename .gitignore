@@ -1,3 +1,17 @@
 node_modules/
 frontend/node_modules/
 compliance-platform/node_modules/
+# Ignore Environment Files
+**/.env
+**/.env.local
+
+# Ignore Dependency Folders (very important for speed/storage)
+**/node_modules/
+
+# Ignore Build Folders
+**/dist/
+**/build/
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
